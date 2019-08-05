@@ -1,5 +1,9 @@
 const apiUrl = `https://api.noopschallenge.com/mazebot`;
-let map: Array<Array<string>>, ylength: number, xlength: number;
+let map: Array<Array<string>>;
+let starPos: Array<number>;
+let endPos: Array<number>;
+let ylength: number;
+let xlength: number;
 
 /*
  * Async func that gets the maze
@@ -19,12 +23,16 @@ const getMaze = async (type: string) => {
  * @return: true if solution correct, false otherwise
  */
 const postMaze = async (mazeUrl: string, solution: string) => {
-    let formData = new FormData();
-    formData.append(`solution`, solution);
+    let json = { "directions": solution };
     const response = await fetch(`${apiUrl}/${mazeUrl}`, {
         method: "POST",
-        body: formData
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(json)
     });
+    const data = await response.json();
+    console.log(data);
     if (response.status != 200) {
         // Wrong solution
         return false;
@@ -55,63 +63,129 @@ const compareNodes = (node1: Array<number>, node2: Array<number>) => {
 }
 
 /*
- * Checks if a given node is available
+ * Checks if a given node is available, X means wall, 0 means already visited position
  * @param node: contains array with position of node we want to check
  * @return: true if possible, false otherwise
  */
 const checkNode = (node: Array<number>) => {
-    if (map[node[0]][node[1]] == "X") {
+    if (map[node[1]][node[0]] == "X") {
         return false;
     }
-    if (map[node[0]][node[1]] == "Visited") {
+    if (map[node[1]][node[0]] == "0") {
         return false;
     }
     return true;
 }
 
 /*
- * Opens a given node
+ * Opens a given node and tries to solve it recursively
+ * @param currentPos: contains array with the position of the current node
+ * @return: true if solution found, false otherwise
  */
-const openNode = (currentPos: Array<number>, endPos: Array<number>, solution: string) => {
+const openNode = (currentPos: Array<number>) => {
+    map[currentPos[1]][currentPos[0]] = "0";
     if (compareNodes(currentPos, endPos)) {
         // Path found
+        map[currentPos[1]][currentPos[0]] = "1";
         return true;
     }
     // Check N bounds
     if (currentPos[1] > 0) {
         if (checkNode([currentPos[0], currentPos[1] - 1])) {
             // Node is possible
-
+            if (openNode([currentPos[0], currentPos[1] - 1])) {
+                // Solution Possible
+                map[currentPos[1]][currentPos[0]] = "1";
+                return true;
+            }
+            // Not Possible
         }
     }
     // Check W bounds
     if (currentPos[0] > 0) {
         if (checkNode([currentPos[0] - 1, currentPos[1]])) {
             // Node is possible
+            if (openNode([currentPos[0] - 1, currentPos[1]])) {
+                // Solution Possible
+                map[currentPos[1]][currentPos[0]] = "1";
+                return true;
+            }
+            // Not Possible
         }
     }
     // Check S bounds
     if (currentPos[1] < ylength - 1) {
         if (checkNode([currentPos[0], currentPos[1] + 1])) {
             // Node is possible
+            if (openNode([currentPos[0], currentPos[1] + 1])) {
+                // Solution Possible
+                map[currentPos[1]][currentPos[0]] = "1";
+                return true;
+            }
+            // Not Possible
         }
     }
     // Check E bounds
     if (currentPos[0] < xlength - 1) {
         if (checkNode([currentPos[0] + 1, currentPos[1]])) {
             // Node is possible
+            if (openNode([currentPos[0] + 1, currentPos[1]])) {
+                // Solution Possible
+                map[currentPos[1]][currentPos[0]] = "1";
+                return true;
+            }
+            // Not Possible
         }
     }
 
     // No solutions
-    return false
+    return false;
+}
+
+const backtraceSolution = (currentPos: Array<number>) => {
+    map[currentPos[1]][currentPos[0]] = "0";
+    if (compareNodes(currentPos, endPos)) {
+        // Path found
+        return "";
+    }
+    // Check N bounds
+    if (currentPos[1] > 0) {
+        if (map[currentPos[1] - 1][currentPos[0]] == "1") {
+            return `N${backtraceSolution([currentPos[0], currentPos[1] - 1])}`;
+        }
+    }
+    // Check W bounds
+    if (currentPos[0] > 0) {
+        if (map[currentPos[1]][currentPos[0] - 1] == "1") {
+            return `W${backtraceSolution([currentPos[0] - 1, currentPos[1]])}`;
+        }
+    }
+    // Check S bounds
+    if (currentPos[1] < ylength - 1) {
+        if (map[currentPos[1] + 1][currentPos[0]] == "1") {
+            return `S${backtraceSolution([currentPos[0], currentPos[1] + 1])}`;
+        }
+    }
+    // Check E bounds
+    if (currentPos[0] < xlength - 1) {
+        if (map[currentPos[1]][currentPos[0] + 1] == "1") {
+            return `E${backtraceSolution([currentPos[0] + 1, currentPos[1]])}`;
+        }
+    }
 }
 
 const init = async () => {
     const data = await getMaze(`random`);
-    map = data[`map`];
+    const mazeUrl = `${data[`mazePath`].split(`/`)[2]}/${data[`mazePath`].split(`/`)[3]}`;
+    map = [...data[`map`]];
     ylength = map.length;
     xlength = map[0].length;
-    console.log(checkNode(data[`startingPosition`]));
-    console.log(calculateDirectCost(data[`startingPosition`], data[`endingPosition`]));
+    starPos = data[`startingPosition`];
+    endPos = data[`endingPosition`];
+    let solution = "";
+    if (openNode(starPos)) {
+        // Solution found, backtrace it
+        solution = backtraceSolution(starPos);
+    }
+    const response = postMaze(mazeUrl, solution);
 }
