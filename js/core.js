@@ -30,12 +30,7 @@ const postMaze = async (mazeUrl, solution) => {
         body: JSON.stringify(json)
     });
     const data = await response.json();
-    console.log(data);
-    if (response.status != 200) {
-        // Wrong solution
-        return false;
-    }
-    return true;
+    return data;
 };
 /*
  * Calculates direct cost between any given node and endingPosition
@@ -134,8 +129,13 @@ const openNode = (currentPos) => {
     // No solutions
     return false;
 };
+/*
+ * Backtraces the solution built previously. It is called recursively to build the solution string
+ * @param currentPos: contains array with the position of the current node
+ * @return: solution in string format
+ */
 const backtraceSolution = (currentPos) => {
-    map[currentPos[1]][currentPos[0]] = "0";
+    map[currentPos[1]][currentPos[0]] = "I";
     if (compareNodes(currentPos, endPos)) {
         // Path found
         return "";
@@ -166,17 +166,21 @@ const backtraceSolution = (currentPos) => {
     }
 };
 const init = async () => {
+    // Get maze
     const data = await getMaze(`random`);
-    const mazeUrl = `${data[`mazePath`].split(`/`)[2]}/${data[`mazePath`].split(`/`)[3]}`;
+    // Initialize global variables
     map = [...data[`map`]];
     ylength = map.length;
     xlength = map[0].length;
     starPos = data[`startingPosition`];
     endPos = data[`endingPosition`];
+    // Start maze
     let solution = "";
     if (openNode(starPos)) {
         // Solution found, backtrace it
         solution = backtraceSolution(starPos);
     }
-    const response = postMaze(mazeUrl, solution);
+    // Complete maze
+    const mazeUrl = `${data[`mazePath`].split(`/`)[2]}/${data[`mazePath`].split(`/`)[3]}`;
+    const response = await postMaze(mazeUrl, solution);
 };
