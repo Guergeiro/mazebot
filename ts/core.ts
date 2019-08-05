@@ -1,6 +1,6 @@
 const apiUrl = `https://api.noopschallenge.com/mazebot`;
 let map: Array<Array<string>>;
-let starPos: Array<number>;
+let startPos: Array<number>;
 let endPos: Array<number>;
 let ylength: number;
 let xlength: number;
@@ -66,111 +66,120 @@ const checkNode = (node: Array<number>) => {
     if (map[node[1]][node[0]] == "X") {
         return false;
     }
-    if (map[node[1]][node[0]] == "0") {
-        return false;
-    }
     return true;
 }
 
 /*
- * Opens a given node and tries to solve it recursively
- * @param currentPos: contains array with the position of the current node
- * @return: true if solution found, false otherwise
+ * Populates the map with the distance to the endpoint, recursevily
+ * @param currentPos: contains array with current position
+ * @param distance: contains distance that is incremented recursively
  */
-const openNode = (currentPos: Array<number>) => {
-    map[currentPos[1]][currentPos[0]] = "0";
-    if (compareNodes(currentPos, endPos)) {
-        // Path found
-        map[currentPos[1]][currentPos[0]] = "1";
-        return true;
-    }
+const populateMap = (currentPos: Array<number>, distance: number) => {
+    map[currentPos[1]][currentPos[0]] = `${distance}`;
     // Check N bounds
     if (currentPos[1] > 0) {
         if (checkNode([currentPos[0], currentPos[1] - 1])) {
             // Node is possible
-            if (openNode([currentPos[0], currentPos[1] - 1])) {
-                // Solution Possible
-                map[currentPos[1]][currentPos[0]] = "1";
-                return true;
+            if (map[currentPos[1] - 1][currentPos[0]] != " " && map[currentPos[1] - 1][currentPos[0]] != "A" && map[currentPos[1] - 1][currentPos[0]] != "B") {
+                if (distance + 1 < Number(map[currentPos[1] - 1][currentPos[0]])) {
+                    // Distance is smaller
+                    populateMap([currentPos[0], currentPos[1] - 1], distance + 1);
+                }
+            } else {
+                populateMap([currentPos[0], currentPos[1] - 1], distance + 1);
             }
-            // Not Possible
         }
     }
     // Check W bounds
     if (currentPos[0] > 0) {
         if (checkNode([currentPos[0] - 1, currentPos[1]])) {
             // Node is possible
-            if (openNode([currentPos[0] - 1, currentPos[1]])) {
-                // Solution Possible
-                map[currentPos[1]][currentPos[0]] = "1";
-                return true;
+            if (map[currentPos[1]][currentPos[0] - 1] != " " && map[currentPos[1]][currentPos[0] - 1] != "A" && map[currentPos[1]][currentPos[0] - 1] != "B") {
+                if (distance + 1 < Number(map[currentPos[1]][currentPos[0] - 1])) {
+                    // Distance is smaller
+                    populateMap([currentPos[0] - 1, currentPos[1]], distance + 1);
+                }
+            } else {
+                populateMap([currentPos[0] - 1, currentPos[1]], distance + 1);
             }
-            // Not Possible
         }
     }
     // Check S bounds
     if (currentPos[1] < ylength - 1) {
         if (checkNode([currentPos[0], currentPos[1] + 1])) {
             // Node is possible
-            if (openNode([currentPos[0], currentPos[1] + 1])) {
-                // Solution Possible
-                map[currentPos[1]][currentPos[0]] = "1";
-                return true;
+            if (map[currentPos[1] + 1][currentPos[0]] != " " && map[currentPos[1] + 1][currentPos[0]] != "A" && map[currentPos[1] + 1][currentPos[0]] != "B") {
+                if (distance + 1 < Number(map[currentPos[1] + 1][currentPos[0]])) {
+                    // Distance is smaller
+                    populateMap([currentPos[0], currentPos[1] + 1], distance + 1);
+                }
+            } else {
+                populateMap([currentPos[0], currentPos[1] + 1], distance + 1);
             }
-            // Not Possible
         }
     }
     // Check E bounds
     if (currentPos[0] < xlength - 1) {
         if (checkNode([currentPos[0] + 1, currentPos[1]])) {
             // Node is possible
-            if (openNode([currentPos[0] + 1, currentPos[1]])) {
-                // Solution Possible
-                map[currentPos[1]][currentPos[0]] = "1";
-                return true;
+            if (map[currentPos[1]][currentPos[0] + 1] != " " && map[currentPos[1]][currentPos[0] + 1] != "A" && map[currentPos[1]][currentPos[0] + 1] != "B") {
+                if (distance + 1 < Number(map[currentPos[1]][currentPos[0] + 1])) {
+                    // Distance is smaller
+                    populateMap([currentPos[0] + 1, currentPos[1]], distance + 1);
+                }
+            } else {
+                populateMap([currentPos[0] + 1, currentPos[1]], distance + 1);
             }
-            // Not Possible
         }
     }
-
-    // No solutions
-    return false;
 }
 
-/*
- * Backtraces the solution built previously. It is called recursively to build the solution string
- * @param currentPos: contains array with the position of the current node
- * @return: solution in string format
- */
-const backtraceSolution = (currentPos: Array<number>) => {
-    map[currentPos[1]][currentPos[0]] = "I";
+const solveMaze = (currentPos: Array<number>) => {
+    // Found end
     if (compareNodes(currentPos, endPos)) {
-        // Path found
         return "";
     }
+    let dict = { "N": null, "W": null, "S": null, "E": null };
     // Check N bounds
     if (currentPos[1] > 0) {
-        if (map[currentPos[1] - 1][currentPos[0]] == "1") {
-            return `N${backtraceSolution([currentPos[0], currentPos[1] - 1])}`;
-        }
+        dict["N"] = map[currentPos[1] - 1][currentPos[0]];
     }
     // Check W bounds
     if (currentPos[0] > 0) {
-        if (map[currentPos[1]][currentPos[0] - 1] == "1") {
-            return `W${backtraceSolution([currentPos[0] - 1, currentPos[1]])}`;
-        }
+        dict["W"] = map[currentPos[1]][currentPos[0] - 1];
     }
     // Check S bounds
     if (currentPos[1] < ylength - 1) {
-        if (map[currentPos[1] + 1][currentPos[0]] == "1") {
-            return `S${backtraceSolution([currentPos[0], currentPos[1] + 1])}`;
-        }
+        dict["S"] = map[currentPos[1] + 1][currentPos[0]];
     }
     // Check E bounds
     if (currentPos[0] < xlength - 1) {
-        if (map[currentPos[1]][currentPos[0] + 1] == "1") {
-            return `E${backtraceSolution([currentPos[0] + 1, currentPos[1]])}`;
+        dict["E"] = map[currentPos[1]][currentPos[0] + 1];
+    }
+
+    // Create items array
+    let items = Object.keys(dict).map(key => [key, dict[key]]);
+
+    // Sort the array based on the second element
+    items.sort((item1, item2) => {
+        if (item1[1] == null || item1[1] == " " || item1[1] == "X") {
+            return +1;
         }
+        if (item2[1] == null || item2[1] == " " || item2[1] == "X") {
+            return -1;
+        }
+        return item1[1] - item2[1];
+    });
+
+    switch (items[0][0]) {
+        case "N":
+            return `N${solveMaze([currentPos[0], currentPos[1] - 1])}`;
+        case "W":
+            return `W${solveMaze([currentPos[0] - 1, currentPos[1]])}`;
+        case "S":
+            return `S${solveMaze([currentPos[0], currentPos[1] + 1])}`;
+        case "E":
+            return `E${solveMaze([currentPos[0] + 1, currentPos[1]])}`;
     }
 }
 
@@ -182,17 +191,16 @@ const init = async () => {
     map = [...data[`map`]];
     ylength = map.length;
     xlength = map[0].length;
-    starPos = data[`startingPosition`];
+    startPos = data[`startingPosition`];
     endPos = data[`endingPosition`];
 
-    // Start maze
-    let solution = "";
-    if (openNode(starPos)) {
-        // Solution found, backtrace it
-        solution = backtraceSolution(starPos);
-    }
+    // Populate maze
+    populateMap(endPos, 0);
 
-    // Complete maze
+    // Solve maze
+    let solution = solveMaze(startPos);
+
+    // Post maze
     const mazeUrl = `${data[`mazePath`].split(`/`)[2]}/${data[`mazePath`].split(`/`)[3]}`;
     const response = await postMaze(mazeUrl, solution);
 }
