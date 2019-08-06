@@ -8,7 +8,7 @@ let xlength: number;
 /*
  * Async func that gets the maze
  * @param type: contains string that will be appended to main endpoint
- * @return: JSON data with the maze
+ * @return: json response provided by api
  */
 const getMaze = async (type: string) => {
     const response = await fetch(`${apiUrl}/${type}`);
@@ -17,14 +17,32 @@ const getMaze = async (type: string) => {
 }
 
 /*
- * Async funct that posts the solution to the maze
+ * Async func that posts the solution to the maze
  * @param mazeUrl: contains string with maze url
  * @param solution: contains string with the maze solution
- * @return: true if solution correct, false otherwise
+ * @return: json response provided by api
  */
 const postMaze = async (mazeUrl: string, solution: string) => {
-    let json = { "directions": solution };
+    const json = { "directions": solution };
     const response = await fetch(`${apiUrl}/${mazeUrl}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(json)
+    });
+    const data = await response.json();
+    return data;
+}
+
+/*
+ * Async func that posts github name in order to start race mode
+ * @param GitHubName: contains string with github name
+ * @return: json response provided by api
+ */
+const postName = async (GitHubName: string) => {
+    const json = { "login": GitHubName };
+    const response = await fetch(`${apiUrl}/race/start`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -134,6 +152,11 @@ const populateMap = (currentPos: Array<number>, distance: number) => {
     }
 }
 
+/*
+ * Solves the maze recursively, and always the shortest path
+ * @param currentPos: contains array with current position
+ * @return: String with the final solution
+ */
 const solveMaze = (currentPos: Array<number>) => {
     // Found end
     if (compareNodes(currentPos, endPos)) {
@@ -171,6 +194,7 @@ const solveMaze = (currentPos: Array<number>) => {
         return item1[1] - item2[1];
     });
 
+    // Expands first item which is the lowest
     switch (items[0][0]) {
         case "N":
             return `N${solveMaze([currentPos[0], currentPos[1] - 1])}`;
@@ -183,7 +207,7 @@ const solveMaze = (currentPos: Array<number>) => {
     }
 }
 
-const init = async () => {
+const initRandom = async () => {
     // Get maze
     const data = await getMaze(`random`);
 
@@ -203,4 +227,33 @@ const init = async () => {
     // Post maze
     const mazeUrl = `${data[`mazePath`].split(`/`)[2]}/${data[`mazePath`].split(`/`)[3]}`;
     const response = await postMaze(mazeUrl, solution);
+}
+
+const initRace = async (GitHubName: string) => {
+    // Post name
+    let post = await postName(GitHubName);
+    do {
+        const getUrl = `${post[`nextMaze`].split(`/`)[2]}/${post[`nextMaze`].split(`/`)[3]}`
+        // Get maze
+        const data = await getMaze(getUrl);
+
+        // Initialize global variables
+        map = [...data[`map`]];
+        ylength = map.length;
+        xlength = map[0].length;
+        startPos = data[`startingPosition`];
+        endPos = data[`endingPosition`];
+
+        // Populate maze
+        populateMap(endPos, 0);
+
+        // Solve maze
+        const solution = solveMaze(startPos);
+
+        // Post maze
+        const postUrl = `${data[`mazePath`].split(`/`)[2]}/${data[`mazePath`].split(`/`)[3]}`;
+
+        post = await postMaze(postUrl, solution);
+
+    } while (post["nextMaze"] != null);
 }
