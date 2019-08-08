@@ -260,15 +260,16 @@ const initRace = async () => {
         section.innerHTML += `<p>${JSON.stringify(post)}</p>`;
     } while (post["nextMaze"] != null);
 }
-
-document.querySelectorAll("button").forEach(button => {
-    const type = button.innerHTML;
-    switch (type) {
-        case "Random":
-            button.addEventListener("click", initRandom);
-            break;
-        case "Race":
-            button.addEventListener("click", initRace);
-            break;
-    }
-});
+(async () => {
+    document.querySelectorAll("button").forEach(button => {
+        const type = button.innerHTML;
+        switch (type) {
+            case "Random":
+                button.addEventListener("click", initRandom);
+                break;
+            case "Race":
+                button.addEventListener("click", initRace);
+                break;
+        }
+    });
+})();
