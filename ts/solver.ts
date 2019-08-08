@@ -1,4 +1,6 @@
-const apiUrl = `https://api.noopschallenge.com/mazebot`;
+const apiUrl = `https://api.noopschallenge.com`;
+const section = document.querySelector("body main section:last-of-type");
+
 let map: Array<Array<string>>;
 let startPos: Array<number>;
 let endPos: Array<number>;
@@ -11,7 +13,7 @@ let xlength: number;
  * @return: json response provided by api
  */
 const getMaze = async (type: string) => {
-    const response = await fetch(`${apiUrl}/${type}`);
+    const response = await fetch(`${apiUrl}${type}`);
     const data = await response.json();
     return data;
 }
@@ -24,7 +26,7 @@ const getMaze = async (type: string) => {
  */
 const postMaze = async (mazeUrl: string, solution: string) => {
     const json = { "directions": solution };
-    const response = await fetch(`${apiUrl}/${mazeUrl}`, {
+    const response = await fetch(`${apiUrl}${mazeUrl}`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -42,7 +44,7 @@ const postMaze = async (mazeUrl: string, solution: string) => {
  */
 const postName = async (GitHubName: string) => {
     const json = { "login": GitHubName };
-    const response = await fetch(`${apiUrl}/race/start`, {
+    const response = await fetch(`${apiUrl}/mazebot/race/start`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -92,7 +94,7 @@ const checkNode = (node: Array<number>) => {
  * @param currentPos: contains array with current position
  * @param distance: contains distance that is incremented recursively
  */
-const populateMap = (currentPos: Array<number>, distance: number) => {
+const populateMap = async (currentPos: Array<number>, distance: number) => {
     map[currentPos[1]][currentPos[0]] = `${distance}`;
     // Check N bounds
     if (currentPos[1] > 0) {
@@ -209,7 +211,7 @@ const solveMaze = (currentPos: Array<number>) => {
 
 const initRandom = async () => {
     // Get maze
-    const data = await getMaze(`random`);
+    const data = await getMaze(`/mazebot/random`);
 
     // Initialize global variables
     map = [...data[`map`]];
@@ -225,15 +227,16 @@ const initRandom = async () => {
     let solution = solveMaze(startPos);
 
     // Post maze
-    const mazeUrl = `${data[`mazePath`].split(`/`)[2]}/${data[`mazePath`].split(`/`)[3]}`;
+    const mazeUrl = `${data[`mazePath`]}`;
     const response = await postMaze(mazeUrl, solution);
+    section.innerHTML += `<p>${JSON.stringify(response)}</p>`;
 }
 
-const initRace = async (GitHubName: string) => {
+const initRace = async () => {
     // Post name
-    let post = await postName(GitHubName);
+    let post = await postName("Guergeiro");
     do {
-        const getUrl = `${post[`nextMaze`].split(`/`)[2]}/${post[`nextMaze`].split(`/`)[3]}`
+        const getUrl = `${post[`nextMaze`]}`
         // Get maze
         const data = await getMaze(getUrl);
 
@@ -251,9 +254,21 @@ const initRace = async (GitHubName: string) => {
         const solution = solveMaze(startPos);
 
         // Post maze
-        const postUrl = `${data[`mazePath`].split(`/`)[2]}/${data[`mazePath`].split(`/`)[3]}`;
+        const postUrl = `${data[`mazePath`]}`;
 
         post = await postMaze(postUrl, solution);
-
+        section.innerHTML += `<p>${JSON.stringify(post)}</p>`;
     } while (post["nextMaze"] != null);
 }
+
+document.querySelectorAll("button").forEach(button => {
+    const type = button.innerHTML;
+    switch (type) {
+        case "Random":
+            button.addEventListener("click", initRandom);
+            break;
+        case "Race":
+            button.addEventListener("click", initRace);
+            break;
+    }
+});
